@@ -1,0 +1,329 @@
+/* Premium CSS Design System for Sign Language Translator Dashboard */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+    --bg-dark: #070b19;
+    --bg-card: rgba(18, 26, 48, 0.55);
+    --bg-card-hover: rgba(28, 38, 68, 0.65);
+    --border-color: rgba(255, 255, 255, 0.09);
+    --border-hi: rgba(97, 218, 251, 0.45);
+    --border-glow: rgba(99, 102, 241, 0.35);
+    
+    --primary: #61dafb;
+    --primary-glow: rgba(97, 218, 251, 0.5);
+    --secondary: #6366f1;
+    --secondary-glow: rgba(99, 102, 241, 0.4);
+    --accent: #a855f7;
+    --accent-glow: rgba(168, 85, 247, 0.4);
+    
+    --success: #10b981;
+    --success-glow: rgba(16, 185, 129, 0.4);
+    --warning: #f59e0b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --text-dim: #64748b;
+    
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(7, 11, 25, 0.8);
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-dark);
+    background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.18) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(97, 218, 251, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(7, 11, 25, 1) 0%, rgba(10, 15, 33, 1) 100%);
+    background-size: cover;
+    background-attachment: fixed;
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism Panels */
+.glass-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px 0 rgba(0, 0, 0, 0.45);
+    transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    position: relative;
+}
+
+.glass-panel:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 25px 60px 0 rgba(0, 0, 0, 0.55);
+}
+
+/* Glass Header */
+header {
+    width: 100%;
+    padding: 18px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(7, 11, 25, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.logo-container img {
+    height: 44px;
+    filter: drop-shadow(0 0 10px var(--primary-glow));
+    transition: transform 0.3s ease;
+}
+
+.logo-container:hover img {
+    transform: scale(1.05) rotate(3deg);
+}
+
+.college-title {
+    font-family: var(--font-display);
+    font-size: 1.15em;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #ffffff 30%, var(--primary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+}
+
+/* Main Container */
+.main-wrapper {
+    flex: 1;
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Button Navigation Group */
+.navigation-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 28px;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    text-decoration: none;
+    outline: none;
+    overflow: hidden;
+}
+
+.btn::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(60deg, transparent, rgba(255,255,255,0.15), transparent);
+    transform: rotate(30deg) translateY(-100%);
+    transition: transform 0.6s ease;
+    pointer-events: none;
+}
+
+.btn:hover::after {
+    transform: rotate(30deg) translateY(100%);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: #070b19;
+    border: none;
+    box-shadow: 0 4px 20px rgba(97, 218, 251, 0.3);
+    font-weight: 700;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(97, 218, 251, 0.5);
+    filter: brightness(1.08);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    color: var(--primary);
+}
+
+.btn-accent {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(99, 102, 241, 0.15) 100%);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    color: #e9d5ff;
+}
+
+.btn-accent:hover {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.4) 0%, rgba(99, 102, 241, 0.25) 100%);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px var(--accent-glow);
+}
+
+/* Modern Pill Badges */
+.badge-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+}
+
+.badge-tag.primary {
+    background: rgba(97, 218, 251, 0.1);
+    border-color: rgba(97, 218, 251, 0.3);
+    color: var(--primary);
+}
+
+.badge-tag.success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--success);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+    0% { transform: scale(0.95); opacity: 0.6; box-shadow: 0 0 0 0 rgba(97, 218, 251, 0.7); }
+    70% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 0 10px rgba(97, 218, 251, 0); }
+    100% { transform: scale(0.95); opacity: 0.6; box-shadow: 0 0 0 0 rgba(97, 218, 251, 0); }
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--success);
+    box-shadow: 0 0 10px var(--success);
+    animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* Audio Soundwave Equalizer Animation */
+.soundwave {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 16px;
+}
+.soundwave span {
+    display: block;
+    width: 3px;
+    height: 100%;
+    background: var(--primary);
+    border-radius: 2px;
+    animation: wave 1.2s ease-in-out infinite alternate;
+}
+.soundwave span:nth-child(1) { animation-delay: 0.1s; }
+.soundwave span:nth-child(2) { animation-delay: 0.3s; }
+.soundwave span:nth-child(3) { animation-delay: 0.2s; }
+.soundwave span:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes wave {
+    0% { height: 20%; }
+    100% { height: 100%; }
+}
+
+/* HUD Camera Reticle Corners */
+.hud-corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--primary);
+    pointer-events: none;
+    z-index: 5;
+    transition: all 0.3s ease;
+}
+.hud-corner.top-left { top: 12px; left: 12px; border-right: none; border-bottom: none; }
+.hud-corner.top-right { top: 12px; right: 12px; border-left: none; border-bottom: none; }
+.hud-corner.bottom-left { bottom: 12px; left: 12px; border-right: none; border-top: none; }
+.hud-corner.bottom-right { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+
+/* Footer */
+footer {
+    width: 100%;
+    padding: 28px 40px;
+    text-align: center;
+    border-top: 1px solid var(--border-color);
+    margin-top: auto;
+    font-size: 0.88em;
+    color: var(--text-muted);
+    background: rgba(7, 11, 25, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+footer p {
+    margin-bottom: 6px;
+}
+
+footer .team-credits {
+    font-weight: 600;
+    color: var(--text-main);
+}

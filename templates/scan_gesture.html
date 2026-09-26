@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Translation Dashboard · Sign Language AI | DSATM</title>
+    <meta name="description" content="Real-time sign language translation dashboard with MediaPipe, LSTM, and Indian language support.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #05080f;
+            --bg-2: #080d1a;
+            --card: rgba(255,255,255,0.032);
+            --card-hover: rgba(255,255,255,0.055);
+            --border: rgba(255,255,255,0.07);
+            --border-hi: rgba(97,218,251,0.35);
+            --primary: #61dafb;
+            --primary-dim: rgba(97,218,251,0.1);
+            --secondary: #818cf8;
+            --accent: #f87171;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --text: #f1f5f9;
+            --text-2: #94a3b8;
+            --text-3: #475569;
+            --font: 'Inter', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --r: 14px;
+            --r-sm: 8px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 15% 10%, rgba(99,102,241,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 85% 85%, rgba(97,218,251,0.05) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            width: 100%;
+            padding: 0 24px;
+            height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(5,8,15,0.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .nav-left { display: flex; align-items: center; gap: 16px; }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-2);
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: var(--r-sm);
+            border: 1px solid var(--border);
+            transition: all 0.15s;
+        }
+
+        .back-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); }
+
+        .nav-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+        .nav-sub { font-size: 0.72rem; color: var(--text-3); font-family: var(--mono); }
+
+        .nav-right { display: flex; align-items: center; gap: 10px; }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            color: var(--text-2);
+            background: rgba(255,255,255,0.04);
+            transition: all 0.2s;
+        }
+
+        .status-pill.active { color: var(--success); border-color: rgba(52,211,153,0.25); background: rgba(52,211,153,0.07); }
+        .status-pill.loading { color: var(--warning); border-color: rgba(251,191,36,0.25); background: rgba(251,191,36,0.07); }
+        .status-pill.error { color: var(--accent); border-color: rgba(248,113,113,0.25); background: rgba(248,113,113,0.07); }
+
+        .s-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-pill.active .s-dot { animation: blink 1.2s ease infinite alternate; }
+        @keyframes blink { 0% { opacity: 0.4; } 100% { opacity: 1; box-shadow: 0 0 5px currentColor; } }
+
+        /* ── MAIN LAYOUT ── */
+        .page {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 20px 24px;
+            gap: 16px;
+            max-width: 1280px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            flex: 1;
+        }
+
+        @media (max-width: 960px) { .dashboard { grid-template-columns: 1fr; } }
+
+        /* ── CARD BASE ── */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            backdrop-filter: blur(12px);
+        }
+
+        .card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-head-left { display: flex; align-items: center; gap: 10px; }
+
+        .card-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--primary-dim);
+            border: 1px solid rgba(97,218,251,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .card-title { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+        .card-sub { font-size: 0.72rem; color: var(--text-3); margin-top: 1px; }
+
+        /* ── LEFT PANEL: CAMERA ── */
+        .camera-panel { display: flex; flex-direction: column; }
+
+        .camera-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+
+        /* Video viewport */
+        .video-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #02040b;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: border-color 0.3s;
+        }
+
+        .video-wrap.active { border-color: var(--border-hi); box-shadow: 0 0 20px rgba(97,218,251,0.08); }
+
+        #stream-display {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        #webcam-raw { display: none; }
+        #capture-canvas { display: none; width: 640px; height: 480px; }
+
+        /* Idle placeholder */
+        .vid-idle {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: var(--text-3);
+        }
+
+        .vid-idle i { font-size: 2.4rem; color: rgba(255,255,255,0.08); }
+        .vid-idle p { font-size: 0.83rem; text-align: center; max-width: 200px; line-height: 1.5; }
+
+        /* Scan overlay guide shown when active */
+        .scan-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 55%;
+            aspect-ratio: 1;
+            max-width: 220px;
+            display: none;
+            pointer-events: none;
+        }
+
+        .scan-guide.show { display: block; }
+
+        /* Corner brackets */
+        .sg-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: var(--primary);
+            border-style: solid;
+            opacity: 0.7;
+        }
+
+        .sg-corner.tl { top: 0; left: 0; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
+        .sg-corner.tr { top: 0; right: 0; border-width: 2px 2px 0 0; border-radius: 0 3px 0 0; }
+        .sg-corner.bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; border-radius: 0 0 0 3px; }
+        .sg-corner.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
+
+        .sg-label {
+            position: absolute;
+            bottom: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            font-family: var(--mono);
+            color: var(--primary);
+            white-space: nowrap;
+            background: rgba(5,8,15,0.75);
+            padding: 2px 8px;
+            border-radius: 4px;
+            opacity: 0.8;
+        }
+
+        @keyframes scan-pulse-anim {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; box-shadow: 0 0 0 8px rgba(97,218,251,0); }
+        }
+
+        .sg-corner { animation: scan-pulse-anim 2.5s ease-in-out infinite; }
+
+        /* Video badge overlay */
+        .vid-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.65rem;
+            font-family: var(--mono);
+            font-weight: 600;
+            padding: 4px 9px;
+            border-radius: 5px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(5,8,15,0.7);
+            color: var(--text-2);
+            display: none;
+        }
+
+        .vid-badge.show { display: block; color: var(--success); border-color: rgba(52,211,153,0.3); }
+
+        /* Mode selector */
+        .mode-row {
+            display: flex;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            padding: 3px;
+            gap: 3px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-2);
+            padding: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: var(--font);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .mode-btn.active { background: var(--primary); color: #040710; }
+        .mode-btn:not(.active):hover { background: rgba(255,255,255,0.06); color: var(--text); }
+
+        /* Camera control buttons */
+        .cam-btns { display: flex; gap: 10px; }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; font-size: 0.85rem; font-weight: 700; font-family: var(--font); border-radius: var(--r-sm); border: none; cursor: pointer; transition: all 0.18s; text-decoration: none; }
+        .btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+        .btn-primary { background: var(--primary); color: #040710; flex: 1; box-shadow: 0 0 16px rgba(97,218,251,0.2); }
+        .btn-primary:hover:not(:disabled) { background: #7ee8ff; box-shadow: 0 0 24px rgba(97,218,251,0.35); transform: translateY(-1px); }
+
+        .btn-danger { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); color: var(--accent); flex: 1; }
+        .btn-danger:hover:not(:disabled) { background: rgba(248,113,113,0.2); }
+
+        .btn-ghost { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-2); }
+        .btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: var(--text); }
+
+        .btn-sm { padding: 6px 12px; font-size: 0.77rem; border-radius: 7px; }
+
+        /* ── RIGHT PANEL: CONSOLE ── */
+        .console-panel { display: flex; flex-direction: column; overflow: hidden; }
+        .console-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; flex: 1; overflow-y: auto; }
+
+        /* Gesture display */
+        .gesture-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+        }
+
+        .gesture-main { flex: 1; }
+        .gesture-meta-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); font-weight: 600; margin-bottom: 4px; }
+        .gesture-value { font-size: 2rem; font-weight: 800; color: var(--primary); letter-spacing: -0.01em; line-height: 1.1; }
+        .gesture-english { font-size: 0.78rem; color: var(--text-2); margin-top: 3px; }
+
+        /* Confidence dial (SVG) */
+        .dial-wrap { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+        .dial-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .dial-wrap circle { fill: none; stroke-width: 5; }
+        .dial-bg { stroke: rgba(255,255,255,0.06); }
+        .dial-prog { stroke: var(--primary); stroke-linecap: round; transition: stroke-dashoffset 0.3s ease; }
+        .dial-pct {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            font-family: var(--mono);
+        }
+
+        /* Language selector */
+        .lang-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lang-label { font-size: 0.75rem; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+
+        .lang-select {
+            flex: 1;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            transition: border-color 0.15s;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        .lang-select:hover, .lang-select:focus { border-color: rgba(97,218,251,0.3); outline: none; }
+
+        .lang-translate-btn {
+            background: var(--primary-dim);
+            border: 1px solid rgba(97,218,251,0.25);
+            color: var(--primary);
+            font-family: var(--font);
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 8px 14px;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .lang-translate-btn:hover { background: rgba(97,218,251,0.18); }
+        .lang-translate-btn.loading { opacity: 0.6; cursor: wait; }
+
+        /* ── WORD BUILDER & LETTER ACCUMULATOR ── */
+        .word-builder-block {
+            background: linear-gradient(135deg, rgba(97,218,251,0.05), rgba(129,140,248,0.03));
+            border: 1px solid rgba(97,218,251,0.22);
+            border-radius: var(--r-sm);
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .word-builder-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .word-builder-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .word-builder-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-micro {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            color: var(--text-2);
+            font-family: var(--font);
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s;
+        }
+
+        .btn-micro:hover {
+            background: rgba(97,218,251,0.15);
+            border-color: rgba(97,218,251,0.35);
+            color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .btn-micro.primary {
+            background: rgba(97,218,251,0.15);
+            border-color: rgba(97,218,251,0.3);
+            color: var(--primary);
+        }
+
+        .btn-micro.primary:hover {
+            background: var(--primary);
+            color: #040710;
+        }
+
+        .word-builder-display {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 10px 12px;
+            min-height: 60px;
+        }
+
+        .letter-chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            min-height: 28px;
+        }
+
+        .letter-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 7px;
+            background: linear-gradient(135deg, rgba(97,218,251,0.2), rgba(129,140,248,0.25));
+            border: 1px solid rgba(97,218,251,0.5);
+            color: #ffffff;
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 0.88rem;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(97,218,251,0.2);
+            animation: popIn 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.6); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .letter-chips-empty {
+            font-size: 0.8rem;
+            font-style: italic;
+            color: var(--text-3);
+        }
+
+        .live-word-preview {
+            display: flex;
+            align-items: center;
+            font-family: var(--mono);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #a5f3fc;
+            letter-spacing: 0.04em;
+        }
+
+        .live-word-preview:empty {
+            display: none;
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            color: var(--primary);
+            font-weight: 300;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .word-builder-hint {
+            font-size: 0.7rem;
+            color: var(--text-3);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Translation boxes */
+        .translation-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .trans-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-3);
+        }
+
+        .trans-box {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            padding: 12px 14px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text);
+            min-height: 52px;
+            line-height: 1.6;
+            transition: border-color 0.2s;
+        }
+
+        .trans-box.highlighted { border-color: rgba(97,218,251,0.25); }
+        .trans-box:empty::before { content: attr(data-placeholder); color: var(--text-3); font-size: 0.88rem; font-style: italic; }
+
+        .trans-box.indian { color: var(--primary); font-size: 1.05rem; }
+        .trans-box.indian:empty::before { color: var(--text-3); font-size: 0.88rem; font-style: italic; }
+
+        /* Confidence bars */
+        .conf-section {
+            background: rgba(255,255,255,0.015);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            padding: 14px;
+        }
+
+        .conf-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-3);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .conf-bar-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .conf-bar-row {
+            display: grid;
+            grid-template-columns: 90px 1fr 42px;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .conf-bar-name { font-size: 0.78rem; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .conf-bar-track { height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+        .conf-bar-fill { height: 100%; background: linear-gradient(90deg, var(--secondary), var(--primary)); border-radius: 3px; transition: width 0.22s ease; }
+        .conf-bar-pct { font-size: 0.72rem; font-family: var(--mono); color: var(--primary); text-align: right; }
+
+        .conf-idle { font-size: 0.82rem; color: var(--text-3); font-style: italic; text-align: center; padding: 8px; }
+
+        /* TTS controls */
+        .tts-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.015);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+        }
+
+        .tts-listen-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            font-family: var(--font);
+            padding: 8px 16px;
+            background: var(--primary);
+            color: #040710;
+            border: none;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .tts-listen-btn:hover { background: #7ee8ff; transform: translateY(-1px); }
+        .tts-listen-btn.speaking { background: var(--success); }
+
+        .tts-speed-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tts-speed-label { font-size: 0.72rem; color: var(--text-3); font-weight: 600; white-space: nowrap; }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--primary);
+            cursor: pointer;
+            min-width: 0;
+        }
+
+        .tts-rate-val { font-size: 0.72rem; font-family: var(--mono); color: var(--primary); font-weight: 600; width: 26px; text-align: right; flex-shrink: 0; }
+
+        .tts-lang-tag {
+            font-size: 0.7rem;
+            padding: 3px 9px;
+            border-radius: 5px;
+            background: rgba(97,218,251,0.08);
+            border: 1px solid rgba(97,218,251,0.15);
+            color: var(--primary);
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 14px 24px;
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--text-3);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 640px) {
+            .page { padding: 12px; gap: 12px; }
+            .cam-btns { flex-direction: column; }
+            .tts-row { flex-wrap: wrap; }
+            .lang-row { flex-wrap: wrap; }
+        }
+
+        /* Utility */
+        .copy-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--success);
+            color: #040710;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 10px 18px;
+            border-radius: var(--r-sm);
+            z-index: 999;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.25s;
+            pointer-events: none;
+        }
+
+        .copy-toast.show { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+    <div class="nav-left">
+        <a class="back-btn" href="{{ url_for('home') }}">
+            <i class="fa-solid fa-arrow-left"></i> Home
+        </a>
+        <div>
+            <div class="nav-title">Translation Dashboard</div>
+            <div class="nav-sub">Sign Language AI · DSATM</div>
+        </div>
+    </div>
+    <div class="nav-right">
+        <div class="status-pill" id="general-status">
+            <span class="s-dot"></span>
+            <span id="general-status-text">Idle</span>
+        </div>
+    </div>
+</nav>
+
+<!-- ── PAGE ── -->
+<div class="page">
+    <div class="dashboard">
+
+        <!-- ══ LEFT: CAMERA PANEL ══ -->
+        <div class="card camera-panel">
+            <div class="card-head">
+                <div class="card-head-left">
+                    <div class="card-icon"><i class="fa-solid fa-video"></i></div>
+                    <div>
+                        <div class="card-title">Camera Feed</div>
+                        <div class="card-sub">Hand scan region is centered</div>
+                    </div>
+                </div>
+                <div class="status-pill" id="camera-status">
+                    <span class="s-dot"></span>
+                    <span id="camera-status-text">Camera Off</span>
+                </div>
+            </div>
+
+            <div class="camera-body">
+                <!-- Video / Stream area -->
+                <div class="video-wrap" id="video-box">
+                    <!-- Processed stream shown here -->
+                    <img id="stream-display" alt="Camera stream">
+
+                    <!-- Hidden raw video + canvas for WebRTC capture -->
+                    <video id="webcam-raw" autoplay playsinline muted></video>
+                    <canvas id="capture-canvas"></canvas>
+
+                    <!-- Centered scan guide overlay (visible when camera is active) -->
+                    <div class="scan-guide" id="scan-guide">
+                        <div class="sg-corner tl"></div>
+                        <div class="sg-corner tr"></div>
+                        <div class="sg-corner bl"></div>
+                        <div class="sg-corner br"></div>
+                        <div class="sg-label">Place hand here</div>
+                    </div>
+
+                    <!-- Recording badge -->
+                    <div class="vid-badge" id="vid-badge">● LIVE</div>
+
+                    <!-- Idle placeholder -->
+                    <div class="vid-idle" id="vid-idle">
+                        <i class="fa-solid fa-camera-retro"></i>
+                        <p>Select a mode below and press <strong style="color:var(--text);">Start</strong> to begin scanning</p>
+                    </div>
+                </div>
+
+                <!-- Mode selector -->
+                <div class="mode-row">
+                    <button class="mode-btn active" id="mode-browser" onclick="switchMode('browser')">
+                        <i class="fa-solid fa-globe"></i> Browser WebRTC
+                    </button>
+                    <button class="mode-btn" id="mode-server" onclick="switchMode('server')">
+                        <i class="fa-solid fa-server"></i> Local OpenCV
+                    </button>
+                </div>
+
+                <!-- Start / Stop buttons -->
+                <div class="cam-btns">
+                    <button class="btn btn-primary" id="btn-start" onclick="startCamera()">
+                        <i class="fa-solid fa-play"></i> Start Translation
+                    </button>
+                    <button class="btn btn-danger" id="btn-stop" onclick="stopCamera()" disabled>
+                        <i class="fa-solid fa-stop"></i> Stop
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ RIGHT: CONSOLE PANEL ══ -->
+        <div class="card console-panel">
+            <div class="card-head">
+                <div class="card-head-left">
+                    <div class="card-icon" style="background:rgba(129,140,248,0.1);border-color:rgba(129,140,248,0.25);color:var(--secondary);">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div>
+                        <div class="card-title">AI Translation Console</div>
+                        <div class="card-sub">Real-time gesture → text</div>
+                    </div>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="clearTranslation()">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </button>
+            </div>
+
+            <div class="console-body">
+
+                <!-- Gesture + confidence -->
+                <div class="gesture-row">
+                    <div class="gesture-main">
+                        <div class="gesture-meta-label">Detected Gesture</div>
+                        <div class="gesture-value" id="label-gesture">No Hand</div>
+                        <div class="gesture-english" id="gesture-english-hint"></div>
+                    </div>
+                    <div class="dial-wrap">
+                        <svg viewBox="0 0 64 64">
+                            <circle class="dial-bg" cx="32" cy="32" r="26"></circle>
+                            <circle class="dial-prog" id="dial-ring" cx="32" cy="32" r="26"
+                                stroke-dasharray="163.36" stroke-dashoffset="163.36"></circle>
+                        </svg>
+                        <div class="dial-pct" id="dial-pct">0%</div>
+                    </div>
+                </div>
+
+                <!-- Live Word Builder (Letter Accumulator) -->
+                <div class="word-builder-block">
+                    <div class="word-builder-header">
+                        <div class="word-builder-title">
+                            <i class="fa-solid fa-spell-check"></i> Word Forming (Letters)
+                        </div>
+                        <div class="word-builder-actions">
+                            <button class="btn-micro primary" id="btn-commit-word" onclick="commitCurrentWord()" title="Complete word and add to sentence">
+                                <i class="fa-solid fa-check"></i> Commit / Space
+                            </button>
+                            <button class="btn-micro" id="btn-delete-last" onclick="deleteLast()" title="Backspace last letter or word">
+                                <i class="fa-solid fa-delete-left"></i>
+                            </button>
+                            <button class="btn-micro" id="btn-clear-word" onclick="clearWordBuffer()" title="Clear word in progress">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="word-builder-display">
+                        <div class="letter-chips-container" id="letter-chips-container">
+                            <span class="letter-chips-empty">Sign letters A-Z to spell words…</span>
+                        </div>
+                        <div class="live-word-preview" id="live-word-preview" style="display:none;">
+                            <span id="live-word-text"></span>
+                            <span class="cursor-blink">|</span>
+                        </div>
+                    </div>
+                    <div class="word-builder-hint">
+                        <i class="fa-solid fa-circle-info"></i> Letters join automatically. Rest hand (~0.8s) or press Space to complete word.
+                    </div>
+                </div>
+
+                <!-- Language selector -->
+                <div class="lang-row">
+                    <span class="lang-label"><i class="fa-solid fa-language"></i>&nbsp;Output Language</span>
+                    <select class="lang-select" id="lang-select" onchange="onLanguageChange()">
+                        <option value="en">🇬🇧 English (Default)</option>
+                        <option value="kn">🇮🇳 ಕನ್ನಡ — Kannada</option>
+                        <option value="hi">🇮🇳 हिन्दी — Hindi</option>
+                        <option value="ta">🇮🇳 தமிழ் — Tamil</option>
+                        <option value="te">🇮🇳 తెలుగు — Telugu</option>
+                        <option value="ml">🇮🇳 മലയാളം — Malayalam</option>
+                        <option value="mr">🇮🇳 मराठी — Marathi</option>
+                        <option value="bn">🇮🇳 বাংলা — Bengali</option>
+                        <option value="gu">🇮🇳 ગુજરાતી — Gujarati</option>
+                        <option value="pa">🇮🇳 ਪੰਜਾਬੀ — Punjabi</option>
+                        <option value="or">🇮🇳 ଓଡ଼ିଆ — Odia</option>
+                    </select>
+                    <button class="lang-translate-btn" id="translate-btn" onclick="translateSentenceNow()">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Translate
+                    </button>
+                </div>
+
+                <!-- English running sentence -->
+                <div class="translation-block">
+                    <div class="trans-label">
+                        <span>🇬🇧 English Translation (Running Sentence)</span>
+                        <button class="btn btn-ghost btn-sm" onclick="copySentence('en')" style="padding:3px 9px;font-size:0.7rem;">
+                            <i class="fa-solid fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <div class="trans-box highlighted" id="sentence-english" data-placeholder="English translation will appear here..."></div>
+                </div>
+
+                <!-- Indian language translation -->
+                <div class="translation-block" id="indian-lang-block" style="display:none;">
+                    <div class="trans-label">
+                        <span id="indian-lang-label">🇮🇳 Indian Language Translation</span>
+                        <button class="btn btn-ghost btn-sm" onclick="copySentence('indian')" style="padding:3px 9px;font-size:0.7rem;">
+                            <i class="fa-solid fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <div class="trans-box indian" id="sentence-indian" data-placeholder="Translation will appear here..."></div>
+                </div>
+
+                <!-- Confidence distribution -->
+                <div class="conf-section">
+                    <div class="conf-title">
+                        <i class="fa-solid fa-chart-simple"></i> Top Predictions
+                    </div>
+                    <div class="conf-bar-list" id="conf-bars">
+                        <div class="conf-idle">Start scanning to see live predictions...</div>
+                    </div>
+                </div>
+
+                <!-- TTS -->
+                <div class="tts-row">
+                    <button class="tts-listen-btn" id="tts-btn" onclick="speakCurrentSentence()">
+                        <i class="fa-solid fa-volume-high"></i> Listen
+                    </button>
+                    <span class="tts-lang-tag" id="tts-lang-tag">EN</span>
+                    <div class="tts-speed-row">
+                        <span class="tts-speed-label">Speed</span>
+                        <input type="range" id="tts-rate" min="0.5" max="2" step="0.1" value="1.0">
+                        <span class="tts-rate-val" id="rate-val">1×</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Copy toast -->
+<div class="copy-toast" id="copy-toast">Copied to clipboard!</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+    &copy; 2026 DSATM &mdash; Sign Language AI Major Project
+    &nbsp;|&nbsp; G Jayakrishna Reddy, Darshan S, G Chandan Babu, Akash A J
+</footer>
+
+<script>
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let currentMode = 'browser';
+let cameraRunning = false;
+let mediaStream = null;
+let captureInterval = null;
+let pollInterval = null;
+let processingFrame = false;
+let lastSpokenText = '';
+let currentEnglishSentence = '';
+let currentIndianSentence = '';
+let translateDebounce = null;
+let isSpeaking = false;
+
+const RING_C = 2 * Math.PI * 26; // r=26 → 163.36
+
+/* ══════════════════════════════════════════════
+   DOM REFS
+══════════════════════════════════════════════ */
+const webcamRaw     = document.getElementById('webcam-raw');
+const captureCanvas = document.getElementById('capture-canvas');
+const streamDisplay = document.getElementById('stream-display');
+const videoBox      = document.getElementById('video-box');
+const vidIdle       = document.getElementById('vid-idle');
+const vidBadge      = document.getElementById('vid-badge');
+const scanGuide     = document.getElementById('scan-guide');
+
+const btnStart = document.getElementById('btn-start');
+const btnStop  = document.getElementById('btn-stop');
+
+const genStatus     = document.getElementById('general-status');
+const genStatusText = document.getElementById('general-status-text');
+const camStatus     = document.getElementById('camera-status');
+const camStatusText = document.getElementById('camera-status-text');
+
+const labelGesture          = document.getElementById('label-gesture');
+const gestureHint           = document.getElementById('gesture-english-hint');
+const dialRing              = document.getElementById('dial-ring');
+const dialPct               = document.getElementById('dial-pct');
+const letterChipsContainer  = document.getElementById('letter-chips-container');
+const liveWordPreview       = document.getElementById('live-word-preview');
+const liveWordText          = document.getElementById('live-word-text');
+const sentenceEnglish       = document.getElementById('sentence-english');
+const sentenceIndian        = document.getElementById('sentence-indian');
+const indianLangBlock       = document.getElementById('indian-lang-block');
+const indianLangLabel       = document.getElementById('indian-lang-label');
+const confBars              = document.getElementById('conf-bars');
+
+const langSelect    = document.getElementById('lang-select');
+const translateBtn  = document.getElementById('translate-btn');
+const ttsbtn        = document.getElementById('tts-btn');
+const ttsLangTag    = document.getElementById('tts-lang-tag');
+const ttsRate       = document.getElementById('tts-rate');
+const rateVal       = document.getElementById('rate-val');
+
+/* ══════════════════════════════════════════════
+   STATUS HELPERS
+══════════════════════════════════════════════ */
+function setStatus(el, textEl, cls, text) {
+    el.className = 'status-pill' + (cls ? ' ' + cls : '');
+    textEl.textContent = text;
+}
+
+function setPillByKey(key) {
+    const map = {
+        idle:         ['', 'Idle'],
+        scanning:     ['active', 'Scanning'],
+        initializing: ['loading', 'Initializing…'],
+        error:        ['error', 'Error'],
+        server:       ['active', 'Server Stream'],
+        modelwait:    ['loading', 'Loading Model…'],
+    };
+    const [cls, text] = map[key] || ['', key];
+    setStatus(camStatus, camStatusText, cls, text);
+}
+
+/* ══════════════════════════════════════════════
+   MODE SWITCH
+══════════════════════════════════════════════ */
+function switchMode(mode) {
+    if (cameraRunning) stopCamera();
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('mode-' + mode).classList.add('active');
+}
+
+/* ══════════════════════════════════════════════
+   START / STOP
+══════════════════════════════════════════════ */
+async function startCamera() {
+    cameraRunning = true;
+    btnStart.disabled = true;
+    btnStop.disabled = false;
+
+    vidIdle.style.display = 'none';
+    streamDisplay.style.display = 'block';
+    videoBox.classList.add('active');
+    vidBadge.classList.add('show');
+    scanGuide.classList.add('show');
+
+    setStatus(genStatus, genStatusText, 'active', 'Translating');
+
+    if (currentMode === 'browser') {
+        setPillByKey('initializing');
+        try {
+            const ready = await checkModelReady();
+            if (!ready) { stopCamera(); return; }
+
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, facingMode: 'user' }
+            });
+            webcamRaw.srcObject = mediaStream;
+            await webcamRaw.play();
+            setPillByKey('scanning');
+            captureInterval = setInterval(captureAndSendFrame, 130);
+        } catch (err) {
+            console.error('Camera error:', err);
+            alert('Camera access failed. Try Local OpenCV mode or check browser permissions.');
+            stopCamera();
+        }
+    } else {
+        // Server MJPEG mode
+        setPillByKey('server');
+        streamDisplay.src = '/video_feed';
+        pollInterval = setInterval(pollServerState, 260);
+    }
+}
+
+function stopCamera() {
+    cameraRunning = false;
+    btnStart.disabled = false;
+    btnStop.disabled = true;
+
+    vidIdle.style.display = 'flex';
+    streamDisplay.style.display = 'none';
+    streamDisplay.removeAttribute('src');
+    videoBox.classList.remove('active');
+    vidBadge.classList.remove('show');
+    scanGuide.classList.remove('show');
+
+    setStatus(genStatus, genStatusText, '', 'Idle');
+    setPillByKey('idle');
+
+    clearInterval(captureInterval);
+    clearInterval(pollInterval);
+    captureInterval = null;
+    pollInterval = null;
+
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+    }
+    webcamRaw.srcObject = null;
+}
+
+/* ══════════════════════════════════════════════
+   FRAME CAPTURE → FLASK
+══════════════════════════════════════════════ */
+function captureAndSendFrame() {
+    if (!cameraRunning || processingFrame || webcamRaw.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+    processingFrame = true;
+
+    if (webcamRaw.videoWidth && webcamRaw.videoHeight) {
+        if (captureCanvas.width !== webcamRaw.videoWidth) {
+            captureCanvas.width = webcamRaw.videoWidth;
+            captureCanvas.height = webcamRaw.videoHeight;
+        }
+    } else if (!captureCanvas.width) {
+        captureCanvas.width = 1280;
+        captureCanvas.height = 720;
+    }
+
+    const ctx = captureCanvas.getContext('2d');
+    ctx.drawImage(webcamRaw, 0, 0, captureCanvas.width, captureCanvas.height);
+    const b64 = captureCanvas.toDataURL('image/jpeg', 0.92);
+
+    fetch('/process_frame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: b64 })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'success') {
+            streamDisplay.src = data.processed_image;
+            updateUI(data.gesture, data.confidence, data.full_string, data.current_word, data.current_letters, data.probabilities);
+            setPillByKey('scanning');
+        } else {
+            camStatusText.textContent = data.message || 'Waiting…';
+        }
+    })
+    .catch(err => { console.error('Frame error:', err); setPillByKey('error'); })
+    .finally(() => { processingFrame = false; });
+}
+
+/* ══════════════════════════════════════════════
+   MODEL READY CHECK
+══════════════════════════════════════════════ */
+async function checkModelReady() {
+    try {
+        const res = await fetch('/model_status');
+        const d = await res.json();
+        if (d.ready) return true;
+        setPillByKey(d.error ? 'error' : 'modelwait');
+        camStatusText.textContent = d.message;
+        return !d.error;
+    } catch {
+        setPillByKey('error');
+        return false;
+    }
+}
+
+/* ══════════════════════════════════════════════
+   SERVER POLL (MJPEG mode)
+══════════════════════════════════════════════ */
+function pollServerState() {
+    fetch('/get_translation_state')
+    .then(r => r.json())
+    .then(d => updateUI(d.gesture, d.confidence, d.full_string, d.current_word, d.current_letters, []))
+    .catch(e => console.error('Poll error:', e));
+}
+
+/* ══════════════════════════════════════════════
+   UPDATE UI
+══════════════════════════════════════════════ */
+function updateUI(gesture, confidence, sentence, currentWord, currentLetters, probabilities) {
+    // Gesture label
+    labelGesture.textContent = gesture || 'No Hand';
+
+    // Dial
+    const pct = Math.round((confidence || 0) * 100);
+    dialPct.textContent = pct + '%';
+    const offset = RING_C - (confidence || 0) * RING_C;
+    dialRing.style.strokeDashoffset = offset;
+    dialRing.style.stroke = confidence > 0.8 ? 'var(--success)' : confidence > 0.5 ? 'var(--primary)' : 'var(--text-3)';
+
+    // Live Word Builder (Letters in progress)
+    if (currentLetters && currentLetters.length > 0) {
+        letterChipsContainer.innerHTML = currentLetters.map(l => `<span class="letter-chip">${l}</span>`).join('');
+        liveWordPreview.style.display = 'flex';
+        liveWordText.textContent = currentWord || currentLetters.join('');
+    } else if (currentWord) {
+        letterChipsContainer.innerHTML = `<span class="letter-chips-empty">Spelling word:</span>`;
+        liveWordPreview.style.display = 'flex';
+        liveWordText.textContent = currentWord;
+    } else {
+        letterChipsContainer.innerHTML = `<span class="letter-chips-empty">Sign letters A-Z to spell words…</span>`;
+        liveWordPreview.style.display = 'none';
+        liveWordText.textContent = '';
+    }
+
+    // English sentence
+    const trimmed = (sentence || '').trim();
+    if (trimmed !== currentEnglishSentence) {
+        currentEnglishSentence = trimmed;
+        sentenceEnglish.textContent = trimmed;
+
+        // Auto-translate if Indian language is selected
+        const lang = langSelect.value;
+        if (lang !== 'en' && trimmed) {
+            clearTimeout(translateDebounce);
+            translateDebounce = setTimeout(() => translateSentenceNow(), 700);
+        } else if (lang === 'en') {
+            sentenceIndian.textContent = '';
+        }
+
+        // Auto-speak new words
+        if (trimmed && trimmed !== lastSpokenText) {
+            const newWords = trimmed.startsWith(lastSpokenText)
+                ? trimmed.slice(lastSpokenText.length).trim()
+                : trimmed;
+            if (newWords.length > 1) speakWord(newWords);
+            lastSpokenText = trimmed;
+        } else if (!trimmed) {
+            lastSpokenText = '';
+        }
+    }
+
+    // Confidence bars
+    if (probabilities && probabilities.length > 0) {
+        confBars.innerHTML = probabilities.map(item => {
+            const p = Math.round(item.prob * 100);
+            return `<div class="conf-bar-row">
+                        <div class="conf-bar-name" title="${item.action}">${item.action}</div>
+                        <div class="conf-bar-track"><div class="conf-bar-fill" style="width:${p}%"></div></div>
+                        <div class="conf-bar-pct">${p}%</div>
+                    </div>`;
+        }).join('');
+    } else if (probabilities !== undefined) {
+        confBars.innerHTML = '<div class="conf-idle">Detecting hand postures…</div>';
+    }
+}
+
+/* ══════════════════════════════════════════════
+   WORD BUILDER CONTROLS
+══════════════════════════════════════════════ */
+function commitCurrentWord() {
+    fetch('/commit_word', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+        updateUI(labelGesture.textContent, parseFloat(dialPct.textContent)/100, d.full_string, '', [], undefined);
+        if (d.committed_word) showToast(`Word "${d.committed_word}" committed!`);
+    });
+}
+
+function deleteLast() {
+    fetch('/delete_last', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+        const letters = d.current_word ? d.current_word.split('') : [];
+        updateUI(labelGesture.textContent, parseFloat(dialPct.textContent)/100, d.full_string, d.current_word, letters, undefined);
+    });
+}
+
+function clearWordBuffer() {
+    fetch('/clear_word', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+        updateUI(labelGesture.textContent, parseFloat(dialPct.textContent)/100, d.full_string, '', [], undefined);
+    });
+}
+
+// Keyboard shortcuts (Space/Enter to commit word, Backspace to delete letter)
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        commitCurrentWord();
+    } else if (e.code === 'Backspace') {
+        e.preventDefault();
+        deleteLast();
+    }
+});
+
+/* ══════════════════════════════════════════════
+   LANGUAGE SELECTION
+══════════════════════════════════════════════ */
+const LANG_NAMES = {
+    en: 'English', kn: 'ಕನ್ನಡ', hi: 'हिन्दी', ta: 'தமிழ்',
+    te: 'తెలుగు', ml: 'മലയാളം', mr: 'मराठी', bn: 'বাংলা',
+    gu: 'ગુજરાતી', pa: 'ਪੰਜਾਬੀ', or: 'ଓଡ଼ିଆ'
+};
+
+const LANG_VOICE_CODES = {
+    en: 'en', kn: 'kn-IN', hi: 'hi-IN', ta: 'ta-IN',
+    te: 'te-IN', ml: 'ml-IN', mr: 'mr-IN', bn: 'bn-IN',
+    gu: 'gu-IN', pa: 'pa-IN', or: 'or-IN'
+};
+
+function onLanguageChange() {
+    const lang = langSelect.value;
+    const name = LANG_NAMES[lang] || lang;
+
+    ttsLangTag.textContent = lang.toUpperCase();
+
+    if (lang === 'en') {
+        indianLangBlock.style.display = 'none';
+        sentenceIndian.textContent = '';
+        currentIndianSentence = '';
+    } else {
+        indianLangBlock.style.display = 'flex';
+        indianLangLabel.textContent = `🇮🇳 ${name} Translation`;
+        sentenceIndian.textContent = '';
+        currentIndianSentence = '';
+        // Translate existing sentence if any
+        if (currentEnglishSentence) translateSentenceNow();
+    }
+}
+
+async function translateSentenceNow() {
+    const lang = langSelect.value;
+    if (lang === 'en' || !currentEnglishSentence) return;
+
+    translateBtn.classList.add('loading');
+    try {
+        const res = await fetch('/translate_text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: currentEnglishSentence, target_lang: lang })
+        });
+        const data = await res.json();
+        currentIndianSentence = data.translated || currentEnglishSentence;
+        sentenceIndian.textContent = currentIndianSentence;
+        indianLangBlock.style.display = 'flex';
+        const name = LANG_NAMES[lang] || lang;
+        indianLangLabel.textContent = `🇮🇳 ${name} Translation${data.status === 'fallback' ? ' (fallback)' : ''}`;
+    } catch (e) {
+        console.error('Translation API error:', e);
+        sentenceIndian.textContent = currentEnglishSentence + ' (translation unavailable)';
+    } finally {
+        translateBtn.classList.remove('loading');
+    }
+}
+
+/* ══════════════════════════════════════════════
+   TEXT-TO-SPEECH
+══════════════════════════════════════════════ */
+function speakWord(text) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+
+    const lang = langSelect.value;
+    // Use Indian language text if available and language matches
+    const speakText = (lang !== 'en' && currentIndianSentence) ? currentIndianSentence : text;
+    const voiceCode = LANG_VOICE_CODES[lang] || 'en';
+
+    const utter = new SpeechSynthesisUtterance(speakText);
+    utter.rate = parseFloat(ttsRate.value);
+    utter.pitch = 1.0;
+    utter.lang = voiceCode;
+
+    // Find matching voice
+    const voices = window.speechSynthesis.getVoices();
+    const match = voices.find(v => v.lang.startsWith(voiceCode)) ||
+                  voices.find(v => v.lang.startsWith('en'));
+    if (match) utter.voice = match;
+
+    utter.onstart  = () => { isSpeaking = true;  ttsbtn.classList.add('speaking'); ttsbtn.innerHTML = '<i class="fa-solid fa-stop"></i> Speaking…'; };
+    utter.onend    = () => { isSpeaking = false; ttsbtn.classList.remove('speaking'); ttsbtn.innerHTML = '<i class="fa-solid fa-volume-high"></i> Listen'; };
+    utter.onerror  = () => { isSpeaking = false; ttsbtn.classList.remove('speaking'); ttsbtn.innerHTML = '<i class="fa-solid fa-volume-high"></i> Listen'; };
+
+    window.speechSynthesis.speak(utter);
+}
+
+function speakCurrentSentence() {
+    if (isSpeaking) { window.speechSynthesis.cancel(); return; }
+    const text = currentIndianSentence || currentEnglishSentence || 'No sentence translated yet.';
+    speakWord(text);
+}
+
+/* ══════════════════════════════════════════════
+   COPY
+══════════════════════════════════════════════ */
+function copySentence(which) {
+    const text = which === 'indian' ? currentIndianSentence : currentEnglishSentence;
+    if (!text) { showToast('Nothing to copy!'); return; }
+    navigator.clipboard.writeText(text)
+        .then(() => showToast('Copied to clipboard!'))
+        .catch(() => showToast('Copy failed'));
+}
+
+function showToast(msg) {
+    const t = document.getElementById('copy-toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ══════════════════════════════════════════════
+   RESET / CLEAR
+══════════════════════════════════════════════ */
+function clearTranslation() {
+    fetch('/reset_translation', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'success') {
+            currentEnglishSentence = '';
+            currentIndianSentence = '';
+            lastSpokenText = '';
+            sentenceEnglish.textContent = '';
+            sentenceIndian.textContent = '';
+            labelGesture.textContent = 'No Hand';
+            letterChipsContainer.innerHTML = '<span class="letter-chips-empty">Sign letters A-Z to spell words…</span>';
+            liveWordPreview.style.display = 'none';
+            liveWordText.textContent = '';
+            dialRing.style.strokeDashoffset = RING_C;
+            dialPct.textContent = '0%';
+            confBars.innerHTML = '<div class="conf-idle">History cleared. Perform new gestures.</div>';
+        }
+    });
+}
+
+/* ══════════════════════════════════════════════
+   RATE SLIDER
+══════════════════════════════════════════════ */
+ttsRate.addEventListener('input', e => {
+    rateVal.textContent = parseFloat(e.target.value).toFixed(1) + '×';
+});
+
+// Pre-load voices
+if ('speechSynthesis' in window) {
+    speechSynthesis.getVoices(); // trigger load
+    speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+}
+</script>
+</body>
+</html>

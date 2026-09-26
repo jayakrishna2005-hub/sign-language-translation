@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert to Audio · Sign Language AI | DSATM</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .audio-page-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 180px);
+            padding: 40px 20px;
+        }
+        .audio-card {
+            max-width: 540px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }
+        .audio-icon-wrap {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            border-radius: 50%;
+            background: rgba(97, 218, 251, 0.1);
+            border: 1px solid rgba(97, 218, 251, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--primary);
+            box-shadow: 0 0 30px rgba(97, 218, 251, 0.2);
+        }
+        .audio-card h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #fff 40%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .audio-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .action-group {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .action-group form {
+            width: 100%;
+        }
+        .action-group .btn {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='../OIP-removebg-preview.png') }}" alt="DSATM Logo" onerror="this.src='https://img.icons8.com/color/96/hand.png'">
+            <div>
+                <span class="college-title">DSATM · Sign Language AI</span>
+            </div>
+        </div>
+        <a href="{{ url_for('home') }}" class="btn btn-secondary" style="padding: 10px 20px; font-size: 0.85rem;">
+            <i class="fa-solid fa-arrow-left"></i> Home Page
+        </a>
+    </header>
+
+    <div class="main-wrapper audio-page-container">
+        <div class="glass-panel audio-card">
+            <div class="audio-icon-wrap">
+                <i class="fa-solid fa-file-audio"></i>
+            </div>
+            <h1>Convert Text to Audio</h1>
+            <p>Generate synthesized high-fidelity speech from saved sign language translation sentences for instant playback.</p>
+            
+            <div class="action-group">
+                <form action="{{ url_for('convert_to_audio_run') }}" method="post">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-play"></i> Open & Synthesize Audio File
+                    </button>
+                </form>
+                <a href="{{ url_for('home') }}" class="btn btn-secondary">
+                    <i class="fa-solid fa-house"></i> Return to Studio Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Dayananda Sagar Academy of Technology & Management (DSATM) · Department of CSE</p>
+        <p class="team-credits">Sign Language AI Recognition System</p>
+    </footer>
+</body>
+</html>
